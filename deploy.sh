@@ -6,15 +6,15 @@ PI_HOST="192.168.178.94"
 REMOTE_DIR="/home/admin/discord-bot"
 
 echo "=========================================="
-echo "🚀 Deploying Discord Bot to Raspberry Pi..."
+echo "🚀 Deploying Minecraft SMP Bot to Raspberry Pi 4B..."
 echo "=========================================="
 
 # 1. Ensure remote directory exists
-ssh -o StrictHostKeyChecking=no "${PI_USER}@${PI_HOST}" "mkdir -p ${REMOTE_DIR}"
+ssh -o StrictHostKeyChecking=no "${PI_USER}@${PI_HOST}" "mkdir -p ${REMOTE_DIR}/cogs"
 
-# 2. Copy project files
-echo "📦 Copying files to ${PI_HOST}:${REMOTE_DIR}..."
-scp -o StrictHostKeyChecking=no main.py requirements.txt .env "${PI_USER}@${PI_HOST}:${REMOTE_DIR}/"
+# 2. Copy all project files & cogs recursively
+echo "📦 Copying files and cogs to ${PI_HOST}:${REMOTE_DIR}..."
+scp -o StrictHostKeyChecking=no -r main.py database.py requirements.txt .env cogs "${PI_USER}@${PI_HOST}:${REMOTE_DIR}/"
 
 # 3. Setup virtualenv and install dependencies on Pi
 echo "🐍 Setting up Python virtual environment and installing dependencies on Pi..."
@@ -27,7 +27,7 @@ if [ ! -d "venv" ]; then
     python3 -m venv venv
 fi
 
-echo "Installing requirements..."
+echo "Installing / Updating requirements..."
 ./venv/bin/pip install -q -r requirements.txt
 
 echo "Dependencies successfully installed."
@@ -37,7 +37,7 @@ EOF
 echo "⚙️ Setting up systemd service..."
 ssh -o StrictHostKeyChecking=no "${PI_USER}@${PI_HOST}" "cat << 'SERVICE' > /tmp/discord-bot.service
 [Unit]
-Description=Raspberry Pi Discord Bot
+Description=Raspberry Pi Minecraft SMP Discord Bot
 After=network.target network-online.target
 Wants=network-online.target
 
