@@ -52,10 +52,10 @@ class UltimateSMPBot(commands.Bot):
                     except Exception as e:
                         logger.error(f"Failed to load extension {extension}: {e}", exc_info=True)
 
-        # 4. Sync application slash commands
+        # 4. Global sync
         try:
             synced = await self.tree.sync()
-            logger.info(f"Successfully synced {len(synced)} application slash command(s).")
+            logger.info(f"Successfully synced {len(synced)} application slash command(s) globally.")
         except Exception as e:
             logger.error(f"Failed to sync slash commands: {e}")
 
@@ -66,12 +66,29 @@ class UltimateSMPBot(commands.Bot):
         logger.info(f"🍓 Running on Raspberry Pi 4B")
         logger.info(f"============================================================")
 
+        # Instant Guild Sync (Fixes 'Command outdated' / 'Befehl veraltet' client cache)
+        for guild in self.guilds:
+            try:
+                self.tree.copy_global_to(guild=guild)
+                synced = await self.tree.sync(guild=guild)
+                logger.info(f"Instantly synced {len(synced)} commands to guild: '{guild.name}' (ID: {guild.id})")
+            except Exception as e:
+                logger.warning(f"Could not guild-sync to {guild.id}: {e}")
+
         # Set rich presence
         activity = discord.Activity(
             type=discord.ActivityType.watching,
-            name="Minecraft SMP | /help"
+            name="Minecraft SMP | /help | !setup-smp"
         )
         await self.change_presence(status=discord.Status.online, activity=activity)
+
+    async def on_guild_join(self, guild):
+        try:
+            self.tree.copy_global_to(guild=guild)
+            await self.tree.sync(guild=guild)
+            logger.info(f"Synced commands on joining new guild: {guild.name}")
+        except Exception as e:
+            logger.warning(f"Error syncing on guild join: {e}")
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
