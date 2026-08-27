@@ -69,7 +69,16 @@ class WhitelistDecisionView(discord.ui.View):
         guild = interaction.guild
         member = guild.get_member(self.applicant_id)
 
-        # Assign SMP Member role if exists
+        # 1. Add player to Minecraft Ingame Whitelist via RCON
+        try:
+            from cogs.rcon_manager import run_rcon_cmd
+            run_rcon_cmd("whitelist on")
+            rcon_resp = run_rcon_cmd(f"whitelist add {self.mc_name}")
+            rcon_info = f" (Ingame: `{rcon_resp}`)"
+        except Exception as e:
+            rcon_info = f" (RCON: `{e}`)"
+
+        # 2. Assign SMP Member role if exists
         role = discord.utils.get(guild.roles, name="⛏️ SMP Member")
         if member and role:
             try:
@@ -86,11 +95,11 @@ class WhitelistDecisionView(discord.ui.View):
         embed.set_footer(text=f"Angenommen von {interaction.user.display_name} • Ingame Whitelist: /whitelist add {self.mc_name}")
 
         await interaction.message.edit(embed=embed, view=self)
-        await interaction.response.send_message(f"🎉 **{self.mc_name}** wurde angenommen! (Ingame-Befehl: `/whitelist add {self.mc_name}`)", ephemeral=False)
+        await interaction.response.send_message(f"🎉 **{self.mc_name}** wurde angenommen und automatisch zur Server-Whitelist hinzugefügt!{rcon_info}", ephemeral=False)
 
         if member:
             try:
-                await member.send(f"🎉 Dein Whitelist-Antrag für **{self.mc_name}** auf dem SMP **{guild.name}** wurde angenommen! Viel Spaß beim Spielen!")
+                await member.send(f"🎉 Dein Whitelist-Antrag für **{self.mc_name}** auf dem SMP **{guild.name}** wurde angenommen! Du bist nun auf der Whitelist freigeschaltet. Viel Spaß beim Spielen!\n\n🌐 **IP:** `192.168.178.128`")
             except Exception:
                 pass
 

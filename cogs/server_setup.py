@@ -98,13 +98,19 @@ class ServerSetupCog(commands.Cog):
             async def get_or_create_text(name: str, cat: discord.CategoryChannel, overwrites=None):
                 ch = discord.utils.get(cat.text_channels, name=name)
                 if not ch:
-                    ch = await guild.create_text_channel(name, category=cat, overwrites=overwrites)
+                    kwargs = {"category": cat}
+                    if overwrites and isinstance(overwrites, dict):
+                        kwargs["overwrites"] = overwrites
+                    ch = await guild.create_text_channel(name, **kwargs)
                 return ch
 
             async def get_or_create_voice(name: str, cat: discord.CategoryChannel, user_limit=0):
                 ch = discord.utils.get(cat.voice_channels, name=name)
                 if not ch:
-                    ch = await guild.create_voice_channel(name, category=cat, user_limit=user_limit)
+                    kwargs = {"category": cat}
+                    if user_limit > 0:
+                        kwargs["user_limit"] = user_limit
+                    ch = await guild.create_voice_channel(name, **kwargs)
                 return ch
 
             # INFO KATEGORIE
@@ -158,15 +164,16 @@ class ServerSetupCog(commands.Cog):
             history_info = [msg async for msg in chan_info.history(limit=5)]
             if len(history_info) == 0:
                 embed_info = discord.Embed(
-                    title=f"ℹ️ {server_name} – Server-Informationen",
-                    description="Alle Details, um dem Minecraft SMP Server beizutreten:",
+                    title=f"ℹ️ {server_name} – Server-Informationen & Verbindungsdaten",
+                    description="Unser SMP-Server läuft mit **Fabric** und unterstützt dank **GeyserMC** sowohl Java- als auch Bedrock-Spieler!",
                     color=discord.Color.gold(),
                     timestamp=datetime.now(timezone.utc)
                 )
-                embed_info.add_field(name="🌐 Server-IP", value="`Wird vom Admin eingetragen`", inline=True)
-                embed_info.add_field(name="🎮 Version", value="`Java 1.21.x`", inline=True)
-                embed_info.add_field(name="🔒 Whitelist", value="Aktiviert (Admin anschreiben)", inline=True)
-                embed_info.add_field(name="🤖 Bot-Funktionen", value="Nutze `/mcstatus`, `/coords`, `/shop`, `/skin` und `/calc-nether`!", inline=False)
+                embed_info.add_field(name="☕ Java Edition (PC / Mac)", value="**IP:** `192.168.178.128`\n**Port:** `25565` (Standard)\n**Version:** `1.21.x Fabric`", inline=False)
+                embed_info.add_field(name="📱 Bedrock Edition (Handy / Konsole / Win)", value="**IP / Server-Name:** `192.168.178.128`\n**Port:** `19132`\n**Version:** `Aktuellste Bedrock`", inline=False)
+                embed_info.add_field(name="🔒 Whitelist", value="Aktiviert! Nutze im Kanal `#rollen-auswahl` das Whitelist-Formular oder schreibe einem Admin.", inline=False)
+                embed_info.add_field(name="🤖 Bot-Funktionen", value="Nutze `/mcstatus` für Live-Spieler & Ping, `/coords` für Wegpunkte & `/shop` für den Marktplatz!", inline=False)
+                embed_info.set_footer(text="Gehostet im Heimnetzwerk • Viel Spaß beim Spielen!")
                 await chan_info.send(embed=embed_info)
 
             # 6. Rollenauswahl Panel senden (falls Kanal leer)

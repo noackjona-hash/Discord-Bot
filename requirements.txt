@@ -4,3 +4,4 @@ psutil>=5.9.8
 mcstatus>=11.1.0
 aiosqlite>=0.19.0
 aiohttp>=3.9.0
+mcrcon>=0.7.0

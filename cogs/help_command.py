@@ -20,13 +20,18 @@ class HelpDropdown(discord.ui.Select):
 
         if val == "mc":
             embed = discord.Embed(
-                title="🟢 Minecraft Status & Server Befehle",
-                description="Befehle zum Überwachen deines Minecraft Servers:",
+                title="🟢 Minecraft Status, Power & Server Steuerung",
+                description="Befehle zum Verwalten und Überwachen deines Minecraft Servers:",
                 color=discord.Color.green()
             )
-            embed.add_field(name="`/mcstatus [ip] [port]`", value="Prüft den Live-Status (Ping, MOTD, Spieler, Version).", inline=False)
-            embed.add_field(name="`/mcplayers`", value="Listet alle aktuell eingeloggten Spieler auf.", inline=False)
-            embed.add_field(name="`/set-server-ip <ip> [port]`", value="*(Admin)* Speichert die Standard-IP für diesen Discord Server.", inline=False)
+            embed.add_field(name="🚀 `/mc-start`", value="Fährt den Minecraft-Server hoch, falls er offline/im Ruhezustand ist.", inline=False)
+            embed.add_field(name="🛑 `/mc-stop` & `/mc-restart`", value="*(Admin)* Fährt den Server herunter oder startet ihn neu.", inline=False)
+            embed.add_field(name="⏱️ `/mc-autostop [an/aus] [minuten]`", value="*(Admin)* Konfiguriert das automatische Herunterfahren bei 15 Min. Inaktivität.", inline=False)
+            embed.add_field(name="🟢 `/mcstatus` & `/mcplayers`", value="Zeigt Live-Status (Ping, Java & Bedrock, Spielerliste).", inline=False)
+            embed.add_field(name="🎮 `/rcon <befehl>`", value="*(Admin)* Führt Konsolenbefehle direkt auf dem Server aus.", inline=False)
+            embed.add_field(name="📢 `/broadcast <nachricht>`", value="*(Admin)* Sendet Ingame-Chatnachrichten an alle Spieler.", inline=False)
+            embed.add_field(name="🌱 `/mc-seed`", value="Zeigt den World-Seed & Direktlink zur Chunkbase-Karte.", inline=False)
+            embed.add_field(name="☀️ `/time-set` & `/weather-set`", value="*(Admin)* Ändert Zeit und Wetter ingame.", inline=False)
 
         elif val == "coords":
             embed = discord.Embed(
