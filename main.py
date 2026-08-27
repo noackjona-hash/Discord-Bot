@@ -35,13 +35,14 @@ class UltimateSMPBot(commands.Bot):
         await database.init_db()
 
         # 2. Register Persistent Views (Buttons survive restarts)
-        from cogs.server_setup import RoleSelectionView, VerifyRulesView
+        from cogs.server_setup import RoleSelectionView
         from cogs.unban_system import UnbanApplyView
         from cogs.whitelist_system import WhitelistApplyView
+        from cogs.onboarding_system import PermanentWelcomeView
         self.add_view(RoleSelectionView())
-        self.add_view(VerifyRulesView())
         self.add_view(UnbanApplyView())
         self.add_view(WhitelistApplyView())
+        self.add_view(PermanentWelcomeView())
 
         # 3. Load all Cogs in cogs/ directory
         cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import logging
 import asyncio
 from cogs.unban_system import UnbanApplyView
+from cogs.onboarding_system import PermanentWelcomeView
 
 logger = logging.getLogger("ServerSetup")
 
@@ -41,44 +42,16 @@ class RoleSelectionView(discord.ui.View):
             self.add_item(RoleButton(name, emoji, cid, style))
 
 
-class VerifyRulesView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Regeln akzeptieren & Freischalten ✅", style=discord.ButtonStyle.success, custom_id="verify_rules_btn")
-    async def verify(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild = interaction.guild
-        role = discord.utils.get(guild.roles, name="⛏️ SMP Member")
-        if not role:
-            role = await guild.create_role(name="⛏️ SMP Member", color=discord.Color.green(), hoist=True)
-
-        if role in interaction.user.roles:
-            await interaction.response.send_message("Du bist bereits als SMP Member freigeschaltet! Viel Spaß!", ephemeral=True)
-        else:
-            await interaction.user.add_roles(role)
-            await interaction.response.send_message("🎉 Willkommen! Du wurdest als **⛏️ SMP Member** freigeschaltet und hast nun Zugriff auf alle Kanäle!", ephemeral=True)
-
-
 class ServerSetupCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member):
-        """Auto-assign SMP Member role on join so everyone can play freely."""
-        role = discord.utils.get(member.guild.roles, name="⛏️ SMP Member")
-        if role:
-            try:
-                await member.add_roles(role)
-            except Exception:
-                pass
-
     async def execute_smp_setup(self, guild: discord.Guild, server_name: str, clean_old: bool, sender):
-        """Core logic to build SMP server structure cleanly with buttons and unban appeal."""
+        """Core logic to build gated SMP server structure with onboarding verification."""
         try:
             # 1. Altes SMP Setup bereinigen falls gewünscht
             if clean_old:
-                smp_categories = ["WILLKOMMEN", "COMMUNITY", "HANDEL", "PROJEKTE", "SPRACHKANÄLE", "INFO"]
+                smp_categories = ["WILLKOMMEN", "COMMUNITY", "HANDEL", "PROJEKTE", "SPRACHKANÄLE", "INFO", "EINGANG"]
                 for cat in list(guild.categories):
                     if any(key in cat.name.upper() for key in smp_categories):
                         for ch in list(cat.channels):
@@ -105,24 +78,42 @@ class ServerSetupCog(commands.Cog):
                 {"name": "🚫 Gebannt", "color": discord.Color.dark_red(), "hoist": True},
             ]
 
+            roles_map = {}
             for r in roles_data:
-                if not discord.utils.get(guild.roles, name=r["name"]):
+                role = discord.utils.get(guild.roles, name=r["name"])
+                if not role:
                     try:
-                        await guild.create_role(name=r["name"], color=r["color"], hoist=r["hoist"], mentionable=True)
+                        role = await guild.create_role(name=r["name"], color=r["color"], hoist=r["hoist"], mentionable=True)
                     except Exception as e:
                         logger.warning(f"Konnte Rolle {r['name']} nicht erstellen: {e}")
+                roles_map[r["name"]] = role
 
             everyone_role = guild.default_role
-            read_only_overwrites = {
+            member_role = roles_map.get("⛏️ SMP Member")
+
+            # Category permission overwrites
+            # Public read-only for onboarding & info
+            public_read_only = {
                 everyone_role: discord.PermissionOverwrite(read_messages=True, send_messages=False, add_reactions=True),
                 guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True)
             }
 
-            # 3. Kategorien & Kanäle erstellen (oder wiederverwenden)
-            async def get_or_create_cat(name: str):
+            # Locked category for verified members only
+            members_only_overwrites = {
+                everyone_role: discord.PermissionOverwrite(read_messages=False),
+                guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, manage_channels=True)
+            }
+            if member_role:
+                members_only_overwrites[member_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True, connect=True, speak=True)
+
+            # 3. Kategorien & Kanäle erstellen
+            async def get_or_create_cat(name: str, overwrites=None):
                 cat = discord.utils.get(guild.categories, name=name)
                 if not cat:
-                    cat = await guild.create_category(name)
+                    kwargs = {}
+                    if overwrites and isinstance(overwrites, dict):
+                        kwargs["overwrites"] = overwrites
+                    cat = await guild.create_category(name, **kwargs)
                 return cat
 
             async def get_or_create_text(name: str, cat: discord.CategoryChannel, overwrites=None):
@@ -143,29 +134,30 @@ class ServerSetupCog(commands.Cog):
                     ch = await guild.create_voice_channel(name, **kwargs)
                 return ch
 
-            # INFO KATEGORIE
-            cat_info = await get_or_create_cat("📌 WILLKOMMEN & INFO")
-            chan_rules = await get_or_create_text("📜-regeln", cat_info, read_only_overwrites)
-            chan_news = await get_or_create_text("📢-ankündigungen", cat_info, read_only_overwrites)
-            chan_info = await get_or_create_text("ℹ️-server-info", cat_info, read_only_overwrites)
-            chan_roles = await get_or_create_text("🎭-rollen-auswahl", cat_info, read_only_overwrites)
-            chan_unban = await get_or_create_text("📝-entbannungsantrag", cat_info, read_only_overwrites)
+            # 1. WILLKOMMEN & FREISCHALTUNG (Für alle sichtbar)
+            cat_info = await get_or_create_cat("📌 WILLKOMMEN & FREISCHALTUNG", public_read_only)
+            chan_welcome = await get_or_create_text("🚪-eingang-freischaltung", cat_info, public_read_only)
+            chan_rules = await get_or_create_text("📜-regeln", cat_info, public_read_only)
+            chan_info = await get_or_create_text("ℹ️-server-info", cat_info, public_read_only)
+            chan_roles = await get_or_create_text("🎭-rollen-auswahl", cat_info, public_read_only)
+            chan_unban = await get_or_create_text("📝-entbannungsantrag", cat_info, public_read_only)
 
-            # COMMUNITY KATEGORIE
-            cat_comm = await get_or_create_cat("💬 COMMUNITY")
+            # 2. COMMUNITY (Gesperrt bis Freischaltung)
+            cat_comm = await get_or_create_cat("💬 COMMUNITY", members_only_overwrites)
             await get_or_create_text("💬-allgemein", cat_comm)
             await get_or_create_text("⛏️-smp-talk", cat_comm)
+            await get_or_create_text("📢-ankündigungen", cat_comm)
             await get_or_create_text("📸-screenshots-clips", cat_comm)
             await get_or_create_text("🤖-bot-befehle", cat_comm)
 
-            # HANDEL & PROJEKTE KATEGORIE
-            cat_smp = await get_or_create_cat("🤝 HANDEL & PROJEKTE")
+            # 3. HANDEL & PROJEKTE (Gesperrt bis Freischaltung)
+            cat_smp = await get_or_create_cat("🤝 HANDEL & PROJEKTE", members_only_overwrites)
             await get_or_create_text("🛒-shops-und-handel", cat_smp)
             await get_or_create_text("🏗️-bauprojekte", cat_smp)
             await get_or_create_text("📍-koordinaten", cat_smp)
 
-            # VOICE KATEGORIE
-            cat_voice = await get_or_create_cat("🔊 SPRACHKANÄLE")
+            # 4. SPRACHKANÄLE (Gesperrt bis Freischaltung)
+            cat_voice = await get_or_create_cat("🔊 SPRACHKANÄLE", members_only_overwrites)
             await get_or_create_voice("🔊 Talk 1 (Unbegrenzt)", cat_voice)
             await get_or_create_voice("🔊 Talk 2 (Duo)", cat_voice, user_limit=2)
             await get_or_create_voice("🔊 Talk 3 (Squad)", cat_voice, user_limit=4)
@@ -173,7 +165,29 @@ class ServerSetupCog(commands.Cog):
             await get_or_create_voice("⚔️ Bossfight / End", cat_voice)
             await get_or_create_voice("💤 AFK", cat_voice)
 
-            # 4. Regelwerk Embed + Freischalt-Button senden
+            # 4. Willkommens- & Freischaltungsportal senden
+            history_welcome = [msg async for msg in chan_welcome.history(limit=5)]
+            if len(history_welcome) == 0:
+                embed_welcome = discord.Embed(
+                    title=f"🚪 Willkommen auf dem {server_name}!",
+                    description=(
+                        "Herzlich Willkommen auf unserem Minecraft SMP Discord Server!\n\n"
+                        "🔒 **Server-Zugang gesperrt:**\n"
+                        "Bevor du Zugriff auf alle Textkanäle, Sprachkanäle und Server-Features erhältst, "
+                        "musst du kurz unsere 3-Schritte-Willkommenstour abschließen.\n\n"
+                        "⏱️ **Dauert ca. 30 Sekunden:**\n"
+                        "1️⃣ Server-Überblick & Konzept\n"
+                        "2️⃣ Grundregeln & Fairplay\n"
+                        "3️⃣ Verbindungsdaten & Bestätigung\n\n"
+                        "Klicke auf den grünen Button unten, um deine Freischaltung zu starten! 👇"
+                    ),
+                    color=discord.Color.from_rgb(88, 101, 242),
+                    timestamp=datetime.now(timezone.utc)
+                )
+                embed_welcome.set_footer(text="Automatisches Onboarding-System • 24/7 aktiv")
+                await chan_welcome.send(embed=embed_welcome, view=PermanentWelcomeView())
+
+            # 5. Regelwerk Embed senden
             history_rules = [msg async for msg in chan_rules.history(limit=5)]
             if len(history_rules) == 0:
                 embed_rules = discord.Embed(
@@ -187,10 +201,10 @@ class ServerSetupCog(commands.Cog):
                 embed_rules.add_field(name="3️⃣ Keine Cheats / Unfaire Mods", value="X-Ray, Fly-Hacks, Autoclicker oder Duping führen zu einem sofortigen Bann.", inline=False)
                 embed_rules.add_field(name="4️⃣ Basen-Abstand", value="Baue nicht direkt neben anderen Spielern ohne vorherige Absprache.", inline=False)
                 embed_rules.add_field(name="5️⃣ Handel & Wirtschaft", value="Handel fair in Diamanten oder Tauschwaren im Kanal `#🛒-shops-und-handel`.", inline=False)
-                embed_rules.set_footer(text=f"{server_name} • Klicke unten, um die Regeln zu bestätigen!")
-                await chan_rules.send(embed=embed_rules, view=VerifyRulesView())
+                embed_rules.set_footer(text=f"{server_name} • Fairplay ist Ehrensache!")
+                await chan_rules.send(embed=embed_rules)
 
-            # 5. Server-Info Embed senden
+            # 6. Server-Info Embed senden
             history_info = [msg async for msg in chan_info.history(limit=5)]
             if len(history_info) == 0:
                 embed_info = discord.Embed(
@@ -201,13 +215,13 @@ class ServerSetupCog(commands.Cog):
                 )
                 embed_info.add_field(name="☕ Java Edition (PC / Mac)", value="**Server-Adresse:** `olds-skimpily.tun.ply.gg`\n**Port:** Standard (`25565`)\n**Version:** `1.21.x Fabric`", inline=False)
                 embed_info.add_field(name="📱 Bedrock Edition (Handy / Konsole / Tablet / Win)", value="**Server-IP / Name:** `olds-lieu.tun.ply.gg`\n**Port:** `58695` *(Wichtig!)*\n**Version:** `Aktuelle Bedrock`", inline=False)
-                embed_info.add_field(name="🔓 Server-Zugang", value="Der Server ist **öffentlich** (keine strenge Whitelist nötig). Jeder ist willkommen! Bei Regelverstößen bannen Admins.", inline=False)
+                embed_info.add_field(name="🔓 Server-Zugang", value="Der Server ist öffentlich erreichbar. Bei Regelverstößen bannen Admins.", inline=False)
                 embed_info.add_field(name="🏠 Lokales Netzwerk (LAN/WLAN)?", value="Im selben Heimnetzwerk kannst du auch direkt `192.168.178.128` (Java: `25565`, Bedrock: `19132`) nutzen.", inline=False)
                 embed_info.add_field(name="🤖 Bot-Funktionen", value="Nutze `/mcstatus` für Live-Spieler, `/coords` für Wegpunkte & `/shop` für den Handel!", inline=False)
                 embed_info.set_footer(text="Playit.gg Tunnel aktiv • 24/7 Dauerbetrieb")
                 await chan_info.send(embed=embed_info)
 
-            # 6. Rollenauswahl Panel senden
+            # 7. Rollenauswahl Panel senden
             history_roles = [msg async for msg in chan_roles.history(limit=5)]
             if len(history_roles) == 0:
                 embed_role_select = discord.Embed(
@@ -219,7 +233,7 @@ class ServerSetupCog(commands.Cog):
                 embed_role_select.add_field(name="⛏️ / 🏗️ / ⚔️ / ⚡ Spezialisierungen", value="Zeige anderen Spielern deine Spezialisierung im SMP!", inline=False)
                 await chan_roles.send(embed=embed_role_select, view=RoleSelectionView())
 
-            # 7. Entbannungsantrag Panel senden
+            # 8. Entbannungsantrag Panel senden
             history_unban = [msg async for msg in chan_unban.history(limit=5)]
             if len(history_unban) == 0:
                 embed_unban = discord.Embed(
@@ -238,11 +252,11 @@ class ServerSetupCog(commands.Cog):
                 title="🎉 SMP Discord Server Setup Erfolgreich!",
                 description=(
                     f"Der Server **{server_name}** wurde komplett eingerichtet!\n\n"
-                    f"• Alle Kategorien, Text- und Sprachkanäle wurden erstellt.\n"
-                    f"• **Regelwerk & Freischaltung** in {chan_rules.mention}\n"
-                    f"• **Verbindungsdaten** in {chan_info.mention}\n"
+                    f"• **Onboarding-Schranke:** Neue Nutzer müssen erst die Tour in {chan_welcome.mention} absolvieren.\n"
+                    f"• **Regelwerk & Details** in {chan_rules.mention} & {chan_info.mention}\n"
                     f"• **Interaktive Rollenauswahl** in {chan_roles.mention}\n"
                     f"• **Entbannungsanträge** in {chan_unban.mention}\n"
+                    f"• Alle Hauptkanäle sind für freigeschaltete **⛏️ SMP Member** geöffnet!\n"
                 ),
                 color=discord.Color.green(),
                 timestamp=datetime.now(timezone.utc)
@@ -262,7 +276,7 @@ class ServerSetupCog(commands.Cog):
             else:
                 await sender.send(err_msg)
 
-    @app_commands.command(name="setup-smp", description="Richtet automatisch den perfekten Minecraft SMP Discord Server mit allen Buttons & Kanälen ein.")
+    @app_commands.command(name="setup-smp", description="Richtet automatisch den perfekten Minecraft SMP Discord Server mit Onboarding-Schranke ein.")
     @app_commands.describe(
         server_name="Name deines Minecraft SMPs (z.B. Mein SMP)",
         clean_old="Löscht alte SMP-Standardkanäle vor dem Setup für einen sauberen Neuaufbau (Standard: True)"
