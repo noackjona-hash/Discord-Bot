@@ -140,5 +140,29 @@ class RCONManagerCog(commands.Cog):
         await interaction.response.send_message(f"🌦️ Wetter auf `{weather.name}` geändert! (`{resp}`)")
 
 
+    @app_commands.command(name="starter-kit", description="Gibt einem Spieler manuell das SMP Starter-Kit (Nur Admins).")
+    @app_commands.describe(player_name="Minecraft Ingame-Name (z.B. Steve oder .BedrockName)")
+    @app_commands.default_permissions(administrator=True)
+    async def starter_kit(self, interaction: discord.Interaction, player_name: str):
+        run_rcon_cmd(f"tag {player_name} add received_starter_kit")
+        run_rcon_cmd(f"give {player_name} iron_sword 1")
+        run_rcon_cmd(f"give {player_name} iron_pickaxe 1")
+        run_rcon_cmd(f"give {player_name} iron_axe 1")
+        run_rcon_cmd(f"give {player_name} iron_shovel 1")
+        run_rcon_cmd(f"give {player_name} shield 1")
+        run_rcon_cmd(f"give {player_name} cooked_beef 32")
+        run_rcon_cmd(f"give {player_name} oak_log 32")
+        run_rcon_cmd(f"give {player_name} torch 32")
+        run_rcon_cmd(f"give {player_name} white_bed 1")
+        
+        embed = discord.Embed(
+            title="🎁 Starter-Kit vergeben!",
+            description=f"Spieler **`{player_name}`** hat das Starter-Kit (Eisenwerkzeuge, Schild, Essen, Holz, Fackeln, Bett) erhalten!",
+            color=discord.Color.green()
+        )
+        embed.set_thumbnail(url=f"https://visage.surgeplay.com/face/64/{player_name.lstrip('.')}.png")
+        await interaction.response.send_message(embed=embed)
+
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(RCONManagerCog(bot))

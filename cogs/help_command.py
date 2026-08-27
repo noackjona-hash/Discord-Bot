@@ -29,6 +29,7 @@ class HelpDropdown(discord.ui.Select):
             embed.add_field(name="🟢 `/mcstatus` & `/mcplayers`", value="Zeigt Live-Status (Ping, Java & Bedrock, Spielerliste).", inline=False)
             embed.add_field(name="🎮 `/rcon <befehl>`", value="*(Admin)* Führt Konsolenbefehle direkt auf dem Server aus.", inline=False)
             embed.add_field(name="📢 `/broadcast <nachricht>`", value="*(Admin)* Sendet Ingame-Chatnachrichten an alle Spieler.", inline=False)
+            embed.add_field(name="🗺️ `/map`", value="Öffnet die interaktive Chunkbase-Karte & Web-Dashboard.", inline=False)
             embed.add_field(name="🌱 `/mc-seed`", value="Zeigt den World-Seed & Direktlink zur Chunkbase-Karte.", inline=False)
             embed.add_field(name="☀️ `/time-set` & `/weather-set`", value="*(Admin)* Ändert Zeit und Wetter ingame.", inline=False)
 
@@ -55,10 +56,12 @@ class HelpDropdown(discord.ui.Select):
 
         elif val == "player":
             embed = discord.Embed(
-                title="🎨 Spieler & Skin Tools",
-                description="Mojang-Profile & 3D Renderings:",
+                title="🎨 Spieler, Statistiken & Leaderboards",
+                description="Echte SMP-Statistiken & Mojang-Profile:",
                 color=discord.Color.blue()
             )
+            embed.add_field(name="📊 `/stats [spieler]`", value="Detaillierte Ingame-Statistiken (Spielzeit, Diamanten, Kills, Tode, Distanz).", inline=False)
+            embed.add_field(name="🏆 `/leaderboard [kategorie]`", value="SMP-Bestenlisten für Spielzeit, Diamanten, Monster-Kills, Tode & Distanz.", inline=False)
             embed.add_field(name="`/skin <name>`", value="Zeigt das vollständige 3D-Modell und den Skin-Download an.", inline=False)
             embed.add_field(name="`/player <name>`", value="Zeigt UUID, NameMC Link und 3D-Büste des Spielers.", inline=False)
             embed.add_field(name="`/head <name>`", value="Gibt den Ingame /give Befehl für den Spielerkopf aus.", inline=False)
