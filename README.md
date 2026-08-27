@@ -1,69 +1,50 @@
-# 🍓 Raspberry Pi 4B - Discord Bot
+# 🍓 Raspberry Pi 4B - Minecraft SMP Discord Bot
 
-Ein moderner, performanter Discord Bot in Python (`discord.py` v2), der direkt als systemd-Hintergrunddienst auf dem Raspberry Pi 4B läuft.
-
----
-
-## 📋 Features
-
-- ⚡ **Slash Commands & Prefix-Befehle** (`/ping`, `/status`, `/info`, `/say`, `/help` sowie `!ping`, `!status`, etc.)
-- 🍓 **Raspberry Pi Telemetrie** (`/status` zeigt CPU-Auslastung, CPU-Temperatur, RAM, SD-Karten-Speicher und System-Uptime)
-- 🔄 **Autostart via systemd** (Automatischer Start beim Booten des Pi und automatischer Neustart bei Abstürzen)
-- 🚀 **1-Klick Deployment** (Mit `./deploy.sh` werden alle Änderungen automatisch auf den Pi übertragen)
+Ein moderner, performanter Discord Bot in Python (`discord.py` v2), der direkt als systemd-Hintergrunddienst auf dem Raspberry Pi 4B läuft und deinen Discord-Server automatisch für dein **Minecraft SMP-Projekt** einrichtet.
 
 ---
 
-## 🛠️ Schnellstart-Anleitung
+## 🔗 Bot zum Discord-Server hinzufügen
 
-### 1. Discord Bot Token erstellen (falls noch nicht vorhanden)
-1. Gehe auf das [Discord Developer Portal](https://discord.com/developers/applications).
-2. Klicke oben rechts auf **"New Application"** und gib dem Bot einen Namen.
-3. Gehe im linken Menü auf den Reiter **"Bot"**.
-4. Klicke auf **"Reset Token"** (bzw. "View Token") und kopiere den Token.
-5. Scrolle auf der Bot-Seite nach unten zu **"Privileged Gateway Intents"** und aktiviere:
-   - ✅ **Message Content Intent**
-   - ✅ **Server Members Intent** (optional)
-6. Klicke unten auf **"Save Changes"**.
+Klicke einfach auf den folgenden Link, um den Bot mit Administrator-Rechten zu deinem Discord-Server hinzuzufügen:
 
-### 2. Bot auf deinen Discord-Server einladen
-1. Gehe im Developer Portal auf den Reiter **"OAuth2"** -> **"URL Generator"**.
-2. Wähle unter **Scopes**:
-   - `bot`
-   - `applications.commands`
-3. Wähle unter **Bot Permissions**:
-   - `Send Messages`
-   - `Embed Links`
-   - `Read Message History`
-   - `Use Slash Commands`
-4. Kopiere die generierte URL ganz unten und öffne sie im Browser, um den Bot deinem Server hinzuzufügen.
-
-### 3. Token eintragen & Bot starten
-Trage deinen kopierten Token in die `.env`-Datei ein:
-```env
-DISCORD_TOKEN=dein_kopierter_token_hier
-```
-
-Führe danach einfach das Deployment-Skript aus:
-```bash
-./deploy.sh
-```
-
-Starte den Dienst auf dem Raspberry Pi:
-```bash
-ssh admin@192.168.178.94 "sudo systemctl restart discord-bot"
-```
+👉 **[Hier klicken: Bot zu deinem Discord-Server einladen](https://discord.com/oauth2/authorize?client_id=1542492252373258260&permissions=8&scope=bot%20applications.commands)**
 
 ---
 
-## 🎮 Verfügbare Befehle
+## 🛠️ SMP Auto-Setup
 
-| Slash-Command | Prefix-Befehl | Beschreibung |
+Sobald der Bot auf deinem Server ist, führe einfach den folgenden Slash-Befehl aus:
+```
+/setup-smp server_name:"Mein Minecraft SMP"
+```
+
+Der Bot erstellt vollautomatisch:
+1. **Rollen mit Farben:**
+   - 👑 `Admin`
+   - 🛡️ `Moderator`
+   - ⛏️ `SMP Member`
+   - 🔔 `Ankündigungen`
+2. **Kategorien & Textkanäle:**
+   - 📌 **WILLKOMMEN & INFO:** `#📜-regeln` (mit fertigen SMP-Regeln), `#📢-ankündigungen`, `#ℹ️-server-info` (mit Server-IP, Version & Whitelist-Info)
+   - 💬 **COMMUNITY:** `#💬-allgemein`, `#⛏️-smp-talk`, `#📸-screenshots-clips`, `#🤖-bot-befehle`
+   - 🤝 **HANDEL & PROJEKTE:** `#🛒-shops-und-handel`, `#🏗️-bauprojekte`, `#📍-koordinaten`
+3. **Sprachkanäle:**
+   - `🔊 Talk 1`, `🔊 Talk 2`, `⛏️ Mining & Farmen`, `⚔️ Bossfight / End`, `💤 AFK`
+
+---
+
+## 🎮 Alle verfügbaren Befehle
+
+| Befehl | Berechtigung | Beschreibung |
 | :--- | :--- | :--- |
-| `/ping` | `!ping` | Zeigt die aktuelle Websocket-Latenz des Bots in Millisekunden an. |
-| `/status` | `!status` oder `!pi` | Zeigt CPU-Last, CPU-Temperatur, RAM, Festplatte und Uptime des Raspberry Pi 4B an. |
-| `/info` | `!info` | Zeigt allgemeine Bot- und Systeminformationen. |
-| `/say <nachricht>` | - | Lässt den Bot eine Nachricht wiederholen. |
-| `/help` | `!help` | Zeigt die Hilfsübersicht im Chat. |
+| `/setup-smp [name]` | Admin | Richtet den Discord-Server automatisch für das Minecraft SMP ein. |
+| `/smp-info [ip] [version]` | Jeder | Zeigt oder teilt die Server-IP, Version und Dynmap-Link. |
+| `/status` | Jeder | Zeigt CPU-Temperatur, RAM, Festplatte und Uptime des Raspberry Pi 4B an. |
+| `/ping` | Jeder | Zeigt die aktuelle Websocket-Latenz des Bots an. |
+| `/info` | Jeder | Allgemeine Bot- und Systeminformationen. |
+| `/say <nachricht>` | Jeder | Lässt den Bot eine Nachricht wiederholen. |
+| `/help` | Jeder | Zeigt die Hilfsübersicht im Chat. |
 
 ---
 
@@ -72,8 +53,6 @@ ssh admin@192.168.178.94 "sudo systemctl restart discord-bot"
 | Aktion | Befehl |
 | :--- | :--- |
 | **Status prüfen** | `ssh admin@192.168.178.94 "systemctl status discord-bot"` |
-| **Bot starten** | `ssh admin@192.168.178.94 "sudo systemctl start discord-bot"` |
-| **Bot stoppen** | `ssh admin@192.168.178.94 "sudo systemctl stop discord-bot"` |
 | **Bot neu starten** | `ssh admin@192.168.178.94 "sudo systemctl restart discord-bot"` |
 | **Live-Logs ansehen** | `ssh admin@192.168.178.94 "journalctl -u discord-bot -f"` |
-| **Letzte Logs prüfen** | `ssh admin@192.168.178.94 "journalctl -u discord-bot -n 50 --no-pager"` |
+| **Änderungen deployen** | `./deploy.sh` |

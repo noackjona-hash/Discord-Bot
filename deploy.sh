@@ -45,6 +45,7 @@ Wants=network-online.target
 Type=simple
 User=admin
 WorkingDirectory=/home/admin/discord-bot
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/home/admin/discord-bot/venv/bin/python3 /home/admin/discord-bot/main.py
 Restart=always
 RestartSec=10
