@@ -24,9 +24,8 @@ class HelpDropdown(discord.ui.Select):
                 description="Befehle zum Verwalten und Überwachen deines Minecraft Servers:",
                 color=discord.Color.green()
             )
-            embed.add_field(name="🚀 `/mc-start`", value="Fährt den Minecraft-Server hoch, falls er offline/im Ruhezustand ist.", inline=False)
+            embed.add_field(name="🚀 `/mc-start`", value="Fährt den Server hoch (falls er manuell gestoppt wurde).", inline=False)
             embed.add_field(name="🛑 `/mc-stop` & `/mc-restart`", value="*(Admin)* Fährt den Server herunter oder startet ihn neu.", inline=False)
-            embed.add_field(name="⏱️ `/mc-autostop [an/aus] [minuten]`", value="*(Admin)* Konfiguriert das automatische Herunterfahren bei 15 Min. Inaktivität.", inline=False)
             embed.add_field(name="🟢 `/mcstatus` & `/mcplayers`", value="Zeigt Live-Status (Ping, Java & Bedrock, Spielerliste).", inline=False)
             embed.add_field(name="🎮 `/rcon <befehl>`", value="*(Admin)* Führt Konsolenbefehle direkt auf dem Server aus.", inline=False)
             embed.add_field(name="📢 `/broadcast <nachricht>`", value="*(Admin)* Sendet Ingame-Chatnachrichten an alle Spieler.", inline=False)
