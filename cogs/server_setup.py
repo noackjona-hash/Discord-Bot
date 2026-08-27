@@ -164,16 +164,17 @@ class ServerSetupCog(commands.Cog):
             history_info = [msg async for msg in chan_info.history(limit=5)]
             if len(history_info) == 0:
                 embed_info = discord.Embed(
-                    title=f"ℹ️ {server_name} – Server-Informationen & Verbindungsdaten",
-                    description="Unser SMP-Server läuft mit **Fabric** und unterstützt dank **GeyserMC** sowohl Java- als auch Bedrock-Spieler!",
+                    title=f"ℹ️ {server_name} – Verbindungsdaten (Weltweit erreichbar)",
+                    description="Unser SMP-Server läuft mit **Fabric** und unterstützt dank **GeyserMC** sowohl Java- als auch Bedrock-Spieler von überall auf der Welt!",
                     color=discord.Color.gold(),
                     timestamp=datetime.now(timezone.utc)
                 )
-                embed_info.add_field(name="☕ Java Edition (PC / Mac)", value="**IP:** `192.168.178.128`\n**Port:** `25565` (Standard)\n**Version:** `1.21.x Fabric`", inline=False)
-                embed_info.add_field(name="📱 Bedrock Edition (Handy / Konsole / Win)", value="**IP / Server-Name:** `192.168.178.128`\n**Port:** `19132`\n**Version:** `Aktuellste Bedrock`", inline=False)
-                embed_info.add_field(name="🔒 Whitelist", value="Aktiviert! Nutze im Kanal `#rollen-auswahl` das Whitelist-Formular oder schreibe einem Admin.", inline=False)
-                embed_info.add_field(name="🤖 Bot-Funktionen", value="Nutze `/mcstatus` für Live-Spieler & Ping, `/coords` für Wegpunkte & `/shop` für den Marktplatz!", inline=False)
-                embed_info.set_footer(text="Gehostet im Heimnetzwerk • Viel Spaß beim Spielen!")
+                embed_info.add_field(name="☕ Java Edition (PC / Mac)", value="**Server-Adresse:** `olds-skimpily.tun.ply.gg`\n**Port:** Standard (`25565`)\n**Version:** `1.21.x Fabric`", inline=False)
+                embed_info.add_field(name="📱 Bedrock Edition (Handy / Konsole / Tablet / Win)", value="**Server-IP / Name:** `olds-lieu.tun.ply.gg`\n**Port:** `58695` *(Wichtig!)*\n**Version:** `Aktuelle Bedrock`", inline=False)
+                embed_info.add_field(name="🔒 Whitelist", value="Aktiviert! Nutze im Kanal `#🎭-rollen-auswahl` das Whitelist-Bewerbungsformular.", inline=False)
+                embed_info.add_field(name="🏠 Lokales Netzwerk (LAN/WLAN)?", value="Im selben Heimnetzwerk kannst du auch direkt `192.168.178.128` (Java: `25565`, Bedrock: `19132`) nutzen.", inline=False)
+                embed_info.add_field(name="🤖 Bot-Funktionen", value="Nutze `/mcstatus` für Live-Spieler, `/mc-start` zum Hochfahren & `/coords` für Wegpunkte!", inline=False)
+                embed_info.set_footer(text="Playit.gg Tunnel aktiv • Viel Spaß beim Spielen!")
                 await chan_info.send(embed=embed_info)
 
             # 6. Rollenauswahl Panel senden (falls Kanal leer)
