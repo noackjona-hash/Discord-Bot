@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime, timezone
 import logging
 import asyncio
+from cogs.unban_system import UnbanApplyView
 
 logger = logging.getLogger("ServerSetup")
 
@@ -40,12 +41,40 @@ class RoleSelectionView(discord.ui.View):
             self.add_item(RoleButton(name, emoji, cid, style))
 
 
+class VerifyRulesView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Regeln akzeptieren & Freischalten ✅", style=discord.ButtonStyle.success, custom_id="verify_rules_btn")
+    async def verify(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        role = discord.utils.get(guild.roles, name="⛏️ SMP Member")
+        if not role:
+            role = await guild.create_role(name="⛏️ SMP Member", color=discord.Color.green(), hoist=True)
+
+        if role in interaction.user.roles:
+            await interaction.response.send_message("Du bist bereits als SMP Member freigeschaltet! Viel Spaß!", ephemeral=True)
+        else:
+            await interaction.user.add_roles(role)
+            await interaction.response.send_message("🎉 Willkommen! Du wurdest als **⛏️ SMP Member** freigeschaltet und hast nun Zugriff auf alle Kanäle!", ephemeral=True)
+
+
 class ServerSetupCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        """Auto-assign SMP Member role on join so everyone can play freely."""
+        role = discord.utils.get(member.guild.roles, name="⛏️ SMP Member")
+        if role:
+            try:
+                await member.add_roles(role)
+            except Exception:
+                pass
+
     async def execute_smp_setup(self, guild: discord.Guild, server_name: str, clean_old: bool, sender):
-        """Core logic to build SMP server structure cleanly."""
+        """Core logic to build SMP server structure cleanly with buttons and unban appeal."""
         try:
             # 1. Altes SMP Setup bereinigen falls gewünscht
             if clean_old:
@@ -73,6 +102,7 @@ class ServerSetupCog(commands.Cog):
                 {"name": "🏗️ Baumeister", "color": discord.Color.orange(), "hoist": False},
                 {"name": "⚔️ Krieger", "color": discord.Color.red(), "hoist": False},
                 {"name": "⚡ Redstone-Ingenieur", "color": discord.Color.purple(), "hoist": False},
+                {"name": "🚫 Gebannt", "color": discord.Color.dark_red(), "hoist": True},
             ]
 
             for r in roles_data:
@@ -119,6 +149,7 @@ class ServerSetupCog(commands.Cog):
             chan_news = await get_or_create_text("📢-ankündigungen", cat_info, read_only_overwrites)
             chan_info = await get_or_create_text("ℹ️-server-info", cat_info, read_only_overwrites)
             chan_roles = await get_or_create_text("🎭-rollen-auswahl", cat_info, read_only_overwrites)
+            chan_unban = await get_or_create_text("📝-entbannungsantrag", cat_info, read_only_overwrites)
 
             # COMMUNITY KATEGORIE
             cat_comm = await get_or_create_cat("💬 COMMUNITY")
@@ -132,7 +163,6 @@ class ServerSetupCog(commands.Cog):
             await get_or_create_text("🛒-shops-und-handel", cat_smp)
             await get_or_create_text("🏗️-bauprojekte", cat_smp)
             await get_or_create_text("📍-koordinaten", cat_smp)
-            await get_or_create_text("🗺️-dynmap-links", cat_smp)
 
             # VOICE KATEGORIE
             cat_voice = await get_or_create_cat("🔊 SPRACHKANÄLE")
@@ -143,12 +173,12 @@ class ServerSetupCog(commands.Cog):
             await get_or_create_voice("⚔️ Bossfight / End", cat_voice)
             await get_or_create_voice("💤 AFK", cat_voice)
 
-            # 4. Regelwerk Embed senden (falls Kanal leer)
-            history = [msg async for msg in chan_rules.history(limit=5)]
-            if len(history) == 0:
+            # 4. Regelwerk Embed + Freischalt-Button senden
+            history_rules = [msg async for msg in chan_rules.history(limit=5)]
+            if len(history_rules) == 0:
                 embed_rules = discord.Embed(
                     title=f"📜 {server_name} – Offizielles Regelwerk",
-                    description="Damit wir alle Spaß haben, befolge bitte die folgenden Grundregeln:",
+                    description="Damit wir alle Spaß haben, befolge bitte die folgenden Grundregeln auf dem SMP und im Discord:",
                     color=discord.Color.green(),
                     timestamp=datetime.now(timezone.utc)
                 )
@@ -156,11 +186,11 @@ class ServerSetupCog(commands.Cog):
                 embed_rules.add_field(name="2️⃣ Respekt & Fairplay", value="Toxizität, Beleidigungen und unangebrachtes Verhalten sind verboten.", inline=False)
                 embed_rules.add_field(name="3️⃣ Keine Cheats / Unfaire Mods", value="X-Ray, Fly-Hacks, Autoclicker oder Duping führen zu einem sofortigen Bann.", inline=False)
                 embed_rules.add_field(name="4️⃣ Basen-Abstand", value="Baue nicht direkt neben anderen Spielern ohne vorherige Absprache.", inline=False)
-                embed_rules.add_field(name="5️⃣ Handel & Wirtschaft", value="Handel fair in Diamanten oder Tauschwaren im Kanal `#shops-und-handel`.", inline=False)
-                embed_rules.set_footer(text=f"{server_name} • Fairplay ist Ehrensache!")
-                await chan_rules.send(embed=embed_rules)
+                embed_rules.add_field(name="5️⃣ Handel & Wirtschaft", value="Handel fair in Diamanten oder Tauschwaren im Kanal `#🛒-shops-und-handel`.", inline=False)
+                embed_rules.set_footer(text=f"{server_name} • Klicke unten, um die Regeln zu bestätigen!")
+                await chan_rules.send(embed=embed_rules, view=VerifyRulesView())
 
-            # 5. Server-Info Embed senden (falls Kanal leer)
+            # 5. Server-Info Embed senden
             history_info = [msg async for msg in chan_info.history(limit=5)]
             if len(history_info) == 0:
                 embed_info = discord.Embed(
@@ -171,13 +201,13 @@ class ServerSetupCog(commands.Cog):
                 )
                 embed_info.add_field(name="☕ Java Edition (PC / Mac)", value="**Server-Adresse:** `olds-skimpily.tun.ply.gg`\n**Port:** Standard (`25565`)\n**Version:** `1.21.x Fabric`", inline=False)
                 embed_info.add_field(name="📱 Bedrock Edition (Handy / Konsole / Tablet / Win)", value="**Server-IP / Name:** `olds-lieu.tun.ply.gg`\n**Port:** `58695` *(Wichtig!)*\n**Version:** `Aktuelle Bedrock`", inline=False)
-                embed_info.add_field(name="🔒 Whitelist", value="Aktiviert! Nutze im Kanal `#🎭-rollen-auswahl` das Whitelist-Bewerbungsformular.", inline=False)
+                embed_info.add_field(name="🔓 Server-Zugang", value="Der Server ist **öffentlich** (keine strenge Whitelist nötig). Jeder ist willkommen! Bei Regelverstößen bannen Admins.", inline=False)
                 embed_info.add_field(name="🏠 Lokales Netzwerk (LAN/WLAN)?", value="Im selben Heimnetzwerk kannst du auch direkt `192.168.178.128` (Java: `25565`, Bedrock: `19132`) nutzen.", inline=False)
-                embed_info.add_field(name="🤖 Bot-Funktionen", value="Nutze `/mcstatus` für Live-Spieler, `/mc-start` zum Hochfahren & `/coords` für Wegpunkte!", inline=False)
-                embed_info.set_footer(text="Playit.gg Tunnel aktiv • Viel Spaß beim Spielen!")
+                embed_info.add_field(name="🤖 Bot-Funktionen", value="Nutze `/mcstatus` für Live-Spieler, `/coords` für Wegpunkte & `/shop` für den Handel!", inline=False)
+                embed_info.set_footer(text="Playit.gg Tunnel aktiv • 24/7 Dauerbetrieb")
                 await chan_info.send(embed=embed_info)
 
-            # 6. Rollenauswahl Panel senden (falls Kanal leer)
+            # 6. Rollenauswahl Panel senden
             history_roles = [msg async for msg in chan_roles.history(limit=5)]
             if len(history_roles) == 0:
                 embed_role_select = discord.Embed(
@@ -189,73 +219,80 @@ class ServerSetupCog(commands.Cog):
                 embed_role_select.add_field(name="⛏️ / 🏗️ / ⚔️ / ⚡ Spezialisierungen", value="Zeige anderen Spielern deine Spezialisierung im SMP!", inline=False)
                 await chan_roles.send(embed=embed_role_select, view=RoleSelectionView())
 
+            # 7. Entbannungsantrag Panel senden
+            history_unban = [msg async for msg in chan_unban.history(limit=5)]
+            if len(history_unban) == 0:
+                embed_unban = discord.Embed(
+                    title="⚖️ Minecraft SMP – Entbannungsantrag",
+                    description=(
+                        "Du wurdest auf unserem Minecraft-Server oder Discord gebannt?\n\n"
+                        "Klicke auf den Button unten, um eine Entschuldigung und einen Antrag auf Entbannung an das Server-Team einzureichen.\n\n"
+                        "**Hinweis:** Begründe dein Verhalten sachlich und ehrlich. Admins prüfen deinen Antrag zeitnah."
+                    ),
+                    color=discord.Color.dark_red()
+                )
+                await chan_unban.send(embed=embed_unban, view=UnbanApplyView())
+
             # Bestätigung
-            confirm = discord.Embed(
-                title="🎉 SMP Server-Setup erfolgreich abgeschlossen!",
-                description=f"Der Server **{guild.name}** wurde mit allen Kanälen, Rollen, Berechtigungen und interaktiven Buttons für **{server_name}** eingerichtet.",
-                color=discord.Color.green()
+            embed_success = discord.Embed(
+                title="🎉 SMP Discord Server Setup Erfolgreich!",
+                description=(
+                    f"Der Server **{server_name}** wurde komplett eingerichtet!\n\n"
+                    f"• Alle Kategorien, Text- und Sprachkanäle wurden erstellt.\n"
+                    f"• **Regelwerk & Freischaltung** in {chan_rules.mention}\n"
+                    f"• **Verbindungsdaten** in {chan_info.mention}\n"
+                    f"• **Interaktive Rollenauswahl** in {chan_roles.mention}\n"
+                    f"• **Entbannungsanträge** in {chan_unban.mention}\n"
+                ),
+                color=discord.Color.green(),
+                timestamp=datetime.now(timezone.utc)
             )
-            confirm.add_field(name="Bereinigung alter Kanäle", value="✅ Vollständig durchgeführt" if clean_old else "ℹ️ Bestehende Kanäle beibehalten", inline=False)
-            
+            embed_success.set_footer(text="Dein Discord Minecraft Bot ist bereit!")
+
             if isinstance(sender, discord.Interaction):
-                await sender.followup.send(embed=confirm)
+                await sender.followup.send(embed=embed_success)
             else:
-                await sender.send(embed=confirm)
+                await sender.send(embed=embed_success)
 
         except Exception as e:
-            logger.error(f"Fehler bei setup_smp: {e}", exc_info=True)
-            msg = f"❌ Fehler beim Setup: `{e}`"
+            logger.error(f"Fehler beim Server-Setup: {e}", exc_info=True)
+            err_msg = f"❌ Fehler beim Einrichten des Servers: `{e}`"
             if isinstance(sender, discord.Interaction):
-                await sender.followup.send(msg)
+                await sender.followup.send(err_msg)
             else:
-                await sender.send(msg)
+                await sender.send(err_msg)
 
-    @app_commands.command(name="setup-smp", description="Richtet diesen Discord-Server komplett für dein Minecraft SMP ein.")
+    @app_commands.command(name="setup-smp", description="Richtet automatisch den perfekten Minecraft SMP Discord Server mit allen Buttons & Kanälen ein.")
     @app_commands.describe(
-        server_name="Name deines SMP-Projekts (z. B. 'Jona & Friends SMP')",
-        clean_old="Alte SMP-Kanäle vorher sauber löschen? (Standard: True)"
+        server_name="Name deines Minecraft SMPs (z.B. Mein SMP)",
+        clean_old="Löscht alte SMP-Standardkanäle vor dem Setup für einen sauberen Neuaufbau (Standard: True)"
     )
     @app_commands.default_permissions(administrator=True)
-    async def slash_setup_smp(self, interaction: discord.Interaction, server_name: str = "Minecraft SMP", clean_old: bool = True):
+    async def setup_smp(self, interaction: discord.Interaction, server_name: str = "Minecraft SMP", clean_old: bool = True):
         if not interaction.guild:
-            await interaction.response.send_message("❌ Nur auf Servern ausführbar.", ephemeral=True)
-            return
-
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("❌ Du benötigst Administrator-Rechte für diesen Befehl.", ephemeral=True)
+            await interaction.response.send_message("❌ Dieser Befehl kann nur auf einem Discord Server ausgeführt werden.", ephemeral=True)
             return
 
         await interaction.response.defer(thinking=True)
         await self.execute_smp_setup(interaction.guild, server_name, clean_old, interaction)
 
-    @commands.command(name="setup-smp", aliases=["setupsmp", "smp-setup"])
+    @commands.command(name="setup-smp")
     @commands.has_permissions(administrator=True)
-    async def cmd_setup_smp(self, ctx: commands.Context, *, args: str = ""):
-        """Prefix-Befehl: !setup-smp [Name]"""
-        server_name = args.strip() if args.strip() else "Minecraft SMP"
+    async def setup_smp_prefix(self, ctx: commands.Context, *, server_name: str = "Minecraft SMP"):
+        """Prefix-Fallback für !setup-smp"""
         msg = await ctx.send("⏳ Richte den Minecraft SMP Server ein...")
-        await self.execute_smp_setup(ctx.guild, server_name, clean_old=True, sender=ctx)
+        await self.execute_smp_setup(ctx.guild, server_name, True, ctx)
 
-    @commands.command(name="sync")
-    @commands.has_permissions(administrator=True)
-    async def cmd_sync(self, ctx: commands.Context):
-        """Prefix-Befehl: !sync (Synchronisiert Slash-Commands sofort auf diesen Server)"""
-        msg = await ctx.send("⏳ Synchronisiere Slash-Commands direkt mit diesem Server...")
-        try:
-            self.bot.tree.copy_global_to(guild=ctx.guild)
-            synced = await self.bot.tree.sync(guild=ctx.guild)
-            await msg.edit(content=f"✅ **{len(synced)}** Slash-Commands sofort für diesen Server synchronisiert!")
-        except Exception as e:
-            await msg.edit(content=f"❌ Fehler bei der Synchronisation: `{e}`")
-
-    @app_commands.command(name="setup-roles", description="Sendet das interaktive Rollen-Auswahl-Panel in den aktuellen Kanal.")
+    @app_commands.command(name="setup-roles", description="Sendet das interaktive Panel zur Rollenauswahl in diesen Kanal.")
     @app_commands.default_permissions(administrator=True)
     async def setup_roles(self, interaction: discord.Interaction):
         embed = discord.Embed(
-            title="🎭 Wähle deine Rollen",
-            description="Klicke auf einen Button, um die entsprechende Rolle zu erhalten oder abzuwählen.",
+            title="🎭 Wähle deine SMP-Rollen & Benachrichtigungen",
+            description="Klicke auf die Buttons unten, um dir Rollen zu geben oder zu entfernen:",
             color=discord.Color.blue()
         )
+        embed.add_field(name="🔔 Ankündigungen", value="Werde benachrichtigt bei Events & Updates.", inline=False)
+        embed.add_field(name="⛏️ / 🏗️ / ⚔️ / ⚡ Spezialisierungen", value="Zeige anderen Spielern deine Spezialisierung im SMP!", inline=False)
         await interaction.response.send_message(embed=embed, view=RoleSelectionView())
 
 async def setup(bot: commands.Bot):

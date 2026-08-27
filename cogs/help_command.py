@@ -79,9 +79,11 @@ class HelpDropdown(discord.ui.Select):
                 description="Vollautomatisches Management für Admins:",
                 color=discord.Color.dark_red()
             )
-            embed.add_field(name="`/setup-smp [name]`", value="Erstellt automatisch alle Kategorien, Text-/Voice-Kanäle, Rollen & Regeln!", inline=False)
+            embed.add_field(name="`/setup-smp [name]`", value="Erstellt automatisch alle Kategorien, Text-/Voice-Kanäle, Rollen, Buttons & Entbannung!", inline=False)
             embed.add_field(name="`/setup-roles`", value="Sendet ein interaktives Rollen-Auswahl-Panel mit Buttons in den Chat.", inline=False)
-            embed.add_field(name="`/setup-whitelist-button`", value="Sendet das Whitelist-Antragsformular mit Admin-Annahme/Ablehnung.", inline=False)
+            embed.add_field(name="`/setup-unban-button`", value="Sendet das Entbannungsantrags-Panel in den Chat.", inline=False)
+            embed.add_field(name="`/mc-ban <spieler> [grund] [discord_user]`", value="Bannt einen Spieler von Minecraft & Discord.", inline=False)
+            embed.add_field(name="`/mc-unban <spieler>`", value="Entbannt einen Spieler auf dem Minecraft-Server.", inline=False)
 
         elif val == "pi":
             embed = discord.Embed(
